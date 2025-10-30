@@ -1,0 +1,38 @@
+{% extends "orders/base.html" %}
+{% block content %}
+<h2>My Orders</h2>
+
+{% if orders %}
+  {% for order in orders %}
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between">
+        <span>
+          <strong>Order #{{ order.id }}</strong> — {% if order.created_at %}{{ order.created_at|date:"Y-m-d H:i" }}{% endif %} — {{ order.status }}
+        </span>
+        <span>Total: {{ order.total_price }} RWF</span>
+      </div>
+      <div class="card-body">
+        <h5>Items:</h5>
+        <ul class="list-group">
+          {% for order_item in order.order_items.all %}
+            <li class="list-group-item d-flex justify-content-between">
+              <span>{{ order_item.item.name }} × {{ order_item.quantity }}</span>
+              <span>{{ order_item.price }} RWF</span>
+            </li>
+          {% empty %}
+            <li class="list-group-item d-flex justify-content-between">
+              <span>No items in this order.</span>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="card-footer text-muted">
+        Types: {{ order.order_types }} • Total Items: {{ order.total_items }}
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <p>You have no orders yet.</p>
+{% endif %}
+
+{% endblock %}

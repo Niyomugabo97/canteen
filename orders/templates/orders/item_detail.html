@@ -1,0 +1,18 @@
+{% extends "orders/base.html" %}
+{% load static %}
+
+{% block content %}
+<h1>{{ item.name }}</h1>
+<p>Category: {{ item.category }}</p>
+<p>Price: {{ item.price }} RWF</p>
+<p>{{ item.description }}</p>
+
+<form action="{% url 'orders:cart-add' item.pk %}" method="post">
+    {% csrf_token %}
+    <label>Quantity:</label>
+    <input type="number" name="quantity" value="1" min="1">
+    <button type="submit">Add to Cart</button>
+</form>
+
+<p><a href="{% url 'orders:menu-list' %}">Back to Menu</a></p>
+{% endblock %}

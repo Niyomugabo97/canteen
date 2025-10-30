@@ -1,0 +1,60 @@
+{% extends "orders/base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container my-5">
+    <h1 class="mb-4 text-center">Your Cart</h1>
+
+    {% if cart_items %}
+    <div class="table-responsive">
+        <table class="table table-striped table-bordered align-middle text-center">
+            <thead class="table-dark">
+                <tr>
+                    <th scope="col">Item</th>
+                    <th scope="col">Quantity</th>
+                    <th scope="col">Subtotal</th>
+                    <th scope="col">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ci in cart_items %}
+                <tr>
+                    <td>{{ ci.item.name }}</td>
+                    <td>{{ ci.quantity }}</td>
+                    <td>{{ ci.subtotal }} RWF</td>
+                    <td>
+                        <form action="{% url 'orders:cart-remove' ci.item.pk %}" method="post">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-3">
+        <h5>Total: <strong>{{ total }} RWF</strong></h5>
+        <a href="{% url 'orders:checkout' %}" class="btn btn-gradient px-4 py-2">Proceed to Checkout</a>
+    </div>
+    {% else %}
+    <p class="text-center fs-5 mt-4">
+        Your cart is empty. <a href="{% url 'orders:menu-list' %}" class="text-decoration-none">Go back to menu</a>
+    </p>
+    {% endif %}
+</div>
+
+<!-- Gradient button style (if not in base.css) -->
+<style>
+.btn-gradient {
+    background: linear-gradient(90deg, #6a11cb, #2575fc);
+    color: white;
+    border: none;
+    transition: 0.3s ease;
+}
+.btn-gradient:hover {
+    opacity: 0.9;
+}
+</style>
+{% endblock %}

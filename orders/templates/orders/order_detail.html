@@ -1,0 +1,43 @@
+{% extends "orders/base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-gradient text-white">
+            <h2 class="mb-0">Order #{{ order.id }}</h2>
+        </div>
+        <div class="card-body">
+            <p><strong>Name:</strong> {{ order.full_name }}</p>
+            <p><strong>Phone:</strong> {{ order.phone }}</p>
+            <p><strong>Address:</strong> {{ order.address }}</p>
+            <p>
+                <strong>Status:</strong> 
+                <span class="badge 
+                    {% if order.status == 'pending' %}bg-warning
+                    {% elif order.status == 'completed' %}bg-success
+                    {% elif order.status == 'canceled' %}bg-danger
+                    {% else %}bg-secondary{% endif %}">
+                    {{ order.get_status_display }}
+                </span>
+            </p>
+            <p><strong>Total:</strong> {{ order.total_price }} RWF</p>
+
+            <h5 class="mt-4">Items</h5>
+            <ul class="list-group">
+                {% for oi in order.items.all %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ oi.quantity }} x {{ oi.item.name }}
+                        <span class="badge bg-gradient">{{ oi.price }} RWF each</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="mt-4 text-center">
+        <a href="{% url 'orders:order-list' %}" class="btn btn-gradient">Back to Orders</a>
+        <a href="{% url 'orders:menu-list' %}" class="btn btn-gradient">Back to Menu</a>
+    </div>
+</div>
+{% endblock %}

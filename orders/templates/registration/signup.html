@@ -1,0 +1,18 @@
+{% extends "orders/base.html" %}
+
+{% block content %}
+<div class="container my-5" style="max-width: 500px;">
+    <h1 class="mb-4 text-center">Sign Up</h1>
+    <form method="post" action="{% url 'orders:signup-view' %}">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-gradient w-100 mt-3">Create Account</button>
+    </form>
+    <p class="mt-3 text-center">
+        Already have an account? <a href="{% url 'orders:login' %}">Login here</a>
+    </p>
+    <p class="text-center">
+        <a href="{% url 'orders:menu-list' %}">Back to Menu</a>
+    </p>
+</div>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends "orders/base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="card shadow-lg p-4 rounded-4 mx-auto" style="max-width: 900px; background: #f8f9fa;">
+        <h1 class="text-center mb-4 fw-bold">Checkout</h1>
+
+        {% if cart_items %}
+        <div class="table-responsive mb-4">
+            <table class="table table-striped align-middle text-center">
+                <thead class="table-dark">
+                    <tr>
+                        <th scope="col">Item</th>
+                        <th scope="col">Quantity</th>
+                        <th scope="col">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ci in cart_items %}
+                    <tr>
+                        <td>{{ ci.item.name }}</td>
+                        <td>{{ ci.quantity }}</td>
+                        <td>{{ ci.subtotal }} RWF</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4>Total: <strong>{{ total }} RWF</strong></h4>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                {{ form.as_p }}
+            </div>
+            <button type="submit" class="btn btn-gradient w-100 py-2 fw-semibold">Place Order</button>
+        </form>
+
+        {% else %}
+        <p class="text-center fs-5 mt-4">
+            Your cart is empty. <a href="{% url 'orders:menu-list' %}" class="text-decoration-none fw-bold">Go back to menu</a>
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+/* Gradient button style */
+.btn-gradient {
+    background: linear-gradient(90deg, #6a11cb, #2575fc);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    transition: 0.3s ease;
+}
+.btn-gradient:hover {
+    opacity: 0.9;
+}
+
+/* Optional: responsive adjustments */
+@media (max-width: 768px) {
+    .card {
+        padding: 20px 15px;
+    }
+    table th, table td {
+        font-size: 14px;
+    }
+    button.btn-gradient {
+        font-size: 14px;
+        padding: 10px;
+    }
+}
+</style>
+{% endblock %}
