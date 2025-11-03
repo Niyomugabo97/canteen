@@ -1,0 +1,19 @@
+{% extends "orders/base.html" %}
+
+{% block content %}
+<div class="container my-4" style="max-width: 720px;">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Add New Item</h2>
+    <a href="{% url 'dashboard-home' %}" class="btn btn-outline-secondary">Back</a>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" class="card p-3 shadow-sm">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="mt-2 d-flex gap-2">
+      <button type="submit" class="btn btn-primary">Save Item</button>
+      <a href="{% url 'dashboard-home' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

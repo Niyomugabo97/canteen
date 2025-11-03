@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Order
+from .models import Order, Item
 
 # LOGIN FORM
 class LoginForm(forms.Form):
@@ -26,3 +26,16 @@ class CheckoutForm(forms.ModelForm):
             'phone': forms.TextInput(attrs={'placeholder': 'Phone number'}),
             'address': forms.Textarea(attrs={'placeholder': 'Delivery address', 'rows': 3}),
         }
+
+# ITEM FORM (Admin dashboard)
+class ItemForm(forms.ModelForm):
+    class Meta:
+        model = Item
+        fields = [
+            'name',
+            'category',
+            'price',
+            'description',
+            'image',
+            'available',
+        ]

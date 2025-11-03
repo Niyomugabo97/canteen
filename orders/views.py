@@ -1,75 +1,126 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import login, authenticate, logout
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib import messages
-from .models import Item, Order, OrderItem
-from .forms import CustomUserCreationForm, LoginForm
-from django.contrib.auth import login, logout, authenticate
+from django.contrib.admin.views.decorators import staff_member_required
+from django.http import JsonResponse
+from django.db.models import Q
+from .models import Item, Category, Order
+from .forms import ItemForm, LoginForm
 
 # ============================
-# MENU + CART + CHECKOUT
+# MENU & CATEGORY DISPLAY
 # ============================
 
-def menu_list(request):
-    items = Item.objects.filter(available=True).order_by("category", "name")
-    return render(request, "orders/menu_list.html", {"items": items})
+def menu(request):
+    categories = Category.objects.all()
+    items = Item.objects.all()
+    query = request.GET.get('q')
+    if query:
+        items = items.filter(Q(name__icontains=query) | Q(description__icontains=query))
+    return render(request, 'orders/menu_list.html', {'categories': categories, 'items': items})
 
-def item_detail(request, pk):
-    item = get_object_or_404(Item, pk=pk)
-    return render(request, "orders/item_detail.html", {"item": item})
 
-# Cart helper
+def category_items(request, category_id):
+    category = get_object_or_404(Category, id=category_id)
+    items = Item.objects.filter(category=category)
+    return render(request, 'orders/category_items.html', {'category': category, 'items': items})
+
+
+def item_detail(request, item_id):
+    item = get_object_or_404(Item, id=item_id)
+    return render(request, 'orders/item_detail.html', {'item': item})
+
+
+# ============================
+# CART FUNCTIONALITY (session-based)
+# ============================
+
 def _get_cart(request):
-    return request.session.setdefault("cart", {})
+    return request.session.setdefault('cart', {})
 
-def cart_view(request):
+@login_required
+def add_to_cart(request, item_id):
+    item = get_object_or_404(Item, id=item_id)
+    cart = _get_cart(request)
+    key = str(item_id)
+    cart[key] = cart.get(key, 0) + 1
+    request.session.modified = True
+    messages.success(request, f"{item.name} added to your cart.")
+    return redirect('orders:menu')
+
+
+@login_required
+def view_cart(request):
     cart = _get_cart(request)
     cart_items = []
-    total = 0
+    total_price = 0
     for item_id_str, qty in cart.items():
         try:
-            item = Item.objects.get(pk=int(item_id_str))
+            product = Item.objects.get(pk=int(item_id_str))
         except Item.DoesNotExist:
             continue
-        subtotal = item.price * qty
-        total += subtotal
-        cart_items.append({"item": item, "quantity": qty, "subtotal": subtotal})
-    return render(request, "orders/cart.html", {"cart_items": cart_items, "total": total})
+        subtotal = product.price * qty
+        total_price += subtotal
+        cart_items.append({'item': product, 'quantity': qty, 'subtotal': subtotal})
+    return render(request, 'orders/cart.html', {'cart_items': cart_items, 'total': total_price})
 
-def cart_add(request, item_id):
-    cart = _get_cart(request)
-    item = get_object_or_404(Item, pk=item_id)
-    qty = int(request.POST.get("quantity", 1)) if request.method == "POST" else 1
-    key = str(item_id)
-    cart[key] = cart.get(key, 0) + qty
-    request.session.modified = True
-    messages.success(request, f"Added {qty} x {item.name} to cart.")
-    return redirect("orders:menu-list")
 
-def cart_remove(request, item_id):
+@login_required
+def remove_from_cart(request, item_id):
     cart = _get_cart(request)
     key = str(item_id)
     if key in cart:
         del cart[key]
         request.session.modified = True
-        messages.success(request, "Removed item from cart.")
-    return redirect("orders:cart")
+        messages.success(request, "Item removed from your cart.")
+    return redirect('orders:view-cart')
+
 
 # ============================
-# ORDERS
+# ORDER FUNCTIONALITY
 # ============================
 
 @login_required
-def order_list(request):
-    orders = Order.objects.filter(user=request.user).order_by("-created_at")
-    return render(request, "orders/order_list.html", {"orders": orders})
+def place_order(request):
+    cart = _get_cart(request)
+    if not cart:
+        messages.warning(request, "Your cart is empty.")
+        return redirect('orders:menu')
+
+    # Minimal order create (extend as needed)
+    order = Order.objects.create(user=request.user, full_name=request.user.username, phone='N/A', address='N/A')
+
+    total = 0
+    for item_id_str, qty in cart.items():
+        try:
+            product = Item.objects.get(pk=int(item_id_str))
+        except Item.DoesNotExist:
+            continue
+        total += product.price * qty
+        # If OrderItem model exists with related_name "items"
+        from .models import OrderItem
+        OrderItem.objects.create(order=order, item=product, quantity=qty, price=product.price)
+    order.total_price = total
+    order.save()
+
+    request.session['cart'] = {}
+    request.session.modified = True
+    messages.success(request, "Order placed successfully!")
+    return redirect('orders:view-orders')
+
 
 @login_required
-def order_detail(request, pk):
-    order = get_object_or_404(Order, pk=pk)
-    return render(request, "orders/order_detail.html", {"order": order})
+def view_orders(request):
+    orders = Order.objects.filter(user=request.user).order_by('-created_at')
+    return render(request, 'orders/order_list.html', {'orders': orders})
+
 
 @login_required
 def cancel_order(request, order_id):
+    if request.method != 'POST':
+        return redirect('orders:order-list')
     order = get_object_or_404(Order, pk=order_id, user=request.user)
     if order.status in ['pending', 'preparing']:
         order.status = 'cancelled'
@@ -79,88 +130,153 @@ def cancel_order(request, order_id):
         messages.error(request, "This order cannot be cancelled.")
     return redirect('orders:order-list')
 
+
 # ============================
 # AUTHENTICATION
 # ============================
 
-def signup_view(request):
+def register_user(request):
     if request.method == 'POST':
-        form = CustomUserCreationForm(request.POST)
+        form = UserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
             login(request, user)
-            messages.success(request, "Account created successfully!")
-            return redirect('orders:menu-list')
+            messages.success(request, "Registration successful!")
+            return redirect('orders:menu')
     else:
-        form = CustomUserCreationForm()
+        form = UserCreationForm()
     return render(request, 'registration/signup.html', {'form': form})
 
-def user_login(request):
+
+def login_user(request):
     if request.method == 'POST':
         form = LoginForm(request.POST)
         if form.is_valid():
-            email = form.cleaned_data['email']
-            password = form.cleaned_data['password']
-            # Authenticate using username, find by email
+            email = form.cleaned_data.get('email')
+            password = form.cleaned_data.get('password')
+            # Map email to username for authentication
+            from django.contrib.auth.models import User as DjangoUser
             try:
-                from django.contrib.auth.models import User
-                user_obj = User.objects.get(email=email)
+                user_obj = DjangoUser.objects.get(email=email)
                 username = user_obj.username
-            except User.DoesNotExist:
+            except DjangoUser.DoesNotExist:
                 messages.error(request, "Invalid email or password.")
                 return render(request, 'registration/login.html', {'form': form})
-            user = authenticate(request, username=username, password=password)
-            if user:
+            user = authenticate(username=username, password=password)
+            if user is not None:
                 login(request, user)
-                messages.success(request, "You've been logged in!")
-                return redirect('orders:menu-list')
-            else:
-                messages.error(request, "Invalid email or password.")
+                messages.success(request, f"Welcome back, {user.username}!")
+                return redirect('orders:menu')
+            messages.error(request, "Invalid email or password.")
     else:
         form = LoginForm()
     return render(request, 'registration/login.html', {'form': form})
 
-def logout_view(request):
+
+def logout_user(request):
     logout(request)
-    messages.info(request, "You’ve been logged out.")
-    return redirect("orders:login")
+    messages.info(request, "You have been logged out.")
+    return redirect('orders:login')
 
 
+# ============================
+# CHECKOUT PAGE
+# ============================
 
 @login_required
 def checkout(request):
-    cart = request.session.get("cart", {})
+    cart = _get_cart(request)
     if not cart:
-        messages.info(request, "Your cart is empty.")
-        return redirect("orders:menu-list")
+        messages.warning(request, "Your cart is empty.")
+        return redirect('orders:menu')
 
     cart_items = []
-    total = 0
+    total_price = 0
     for item_id_str, qty in cart.items():
-        item = get_object_or_404(Item, pk=int(item_id_str))
-        subtotal = item.price * qty
-        total += subtotal
-        cart_items.append({"item": item, "quantity": qty, "subtotal": subtotal})
+        product = get_object_or_404(Item, pk=int(item_id_str))
+        subtotal = product.price * qty
+        total_price += subtotal
+        cart_items.append({'item': product, 'quantity': qty, 'subtotal': subtotal})
 
-    if request.method == "POST":
-        # Create order
+    if request.method == 'POST':
+        # Create an order from cart contents, then redirect to success page
+        from .models import OrderItem
         order = Order.objects.create(
             user=request.user,
             full_name=request.user.username,
-            phone="N/A",
-            address="N/A",
-            total_price=total,
+            phone='N/A',
+            address='N/A',
+            total_price=total_price,
         )
-        for c in cart_items:
+        for row in cart_items:
             OrderItem.objects.create(
                 order=order,
-                item=c["item"],
-                quantity=c["quantity"],
-                price=c["item"].price,
+                item=row['item'],
+                quantity=row['quantity'],
+                price=row['item'].price,
             )
-        # Clear cart
-        request.session["cart"] = {}
+        request.session['cart'] = {}
+        request.session.modified = True
         messages.success(request, f"Order #{order.id} placed successfully!")
-        return redirect("orders:order-list")
+        return redirect('orders:order-success', order_id=order.id)
 
-    return render(request, "orders/checkout.html", {"cart_items": cart_items, "total": total})
+    return render(request, 'orders/checkout.html', {'cart_items': cart_items, 'total_price': total_price})
+
+
+def order_success(request, order_id):
+    order = get_object_or_404(Order, pk=order_id)
+    # if authenticated, prevent viewing other users' orders
+    if request.user.is_authenticated and order.user and order.user != request.user:
+        return redirect('orders:order-list')
+    order_items = order.items.select_related('item').all()
+    payment = order.payments.order_by('-created_at').first() if hasattr(order, 'payments') else None
+    return render(request, 'orders/order_success.html', {
+        'order': order,
+        'order_items': order_items,
+        'payment': payment,
+    })
+
+
+# ============================
+# ADMIN DASHBOARD (CUSTOM)
+# ============================
+
+@staff_member_required
+def dashboard_home(request):
+    items = Item.objects.all().order_by('-created_at')
+    return render(request, 'dashboard/dashboard.html', {'items': items})
+
+
+@staff_member_required
+def add_item(request):
+    if request.method == 'POST':
+        form = ItemForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Item added successfully!')
+            return redirect('dashboard-home')
+    else:
+        form = ItemForm()
+    return render(request, 'dashboard/add_item.html', {'form': form})
+
+
+@staff_member_required
+def edit_item(request, item_id):
+    item = get_object_or_404(Item, pk=item_id)
+    if request.method == 'POST':
+        form = ItemForm(request.POST, request.FILES, instance=item)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Item updated successfully!')
+            return redirect('dashboard-home')
+    else:
+        form = ItemForm(instance=item)
+    return render(request, 'dashboard/edit_item.html', {'form': form, 'item': item})
+
+
+@staff_member_required
+def delete_item(request, item_id):
+    item = get_object_or_404(Item, pk=item_id)
+    item.delete()
+    messages.success(request, 'Item deleted successfully!')
+    return redirect('dashboard-home')
