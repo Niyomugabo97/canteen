@@ -2,21 +2,23 @@
 
 {% block content %}
 <div class="container my-4">
+  <!-- Items Section -->
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="mb-0">Admin Dashboard</h2>
     <a href="{% url 'add-item' %}" class="btn btn-primary">+ Add Item</a>
+    
   </div>
 
-  <div class="table-responsive">
+  <div class="table-responsive mb-5">
     <table class="table table-striped align-middle">
       <thead class="table-dark">
         <tr>
-          <th scope="col">Item</th>
-          <th scope="col">Category</th>
-          <th scope="col">Price</th>
-          <th scope="col">Available</th>
-          <th scope="col">Image</th>
-          <th scope="col" class="text-end">Actions</th>
+          <th>Item</th>
+          <th>Category</th>
+          <th>Price</th>
+          <th>Available</th>
+          <th>Image</th>
+          <th class="text-end">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -41,9 +43,7 @@
           </td>
           <td class="text-end">
             <a href="{% url 'edit-item' item.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
-            <a href="{% url 'delete-item' item.id %}"
-               class="btn btn-sm btn-outline-danger"
-               onclick="return confirm('Delete {{ item.name }}? This cannot be undone.');">Delete</a>
+            <a href="{% url 'delete-item' item.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete {{ item.name }}?');">Delete</a>
           </td>
         </tr>
         {% empty %}
@@ -54,6 +54,61 @@
       </tbody>
     </table>
   </div>
+
+  <!-- Orders Section -->
+ <!-- Orders Section -->
+<h3 class="mb-3">All User Orders</h3>
+<div class="table-responsive">
+  <table class="table table-striped text-center align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th>User</th>
+        <th>Phone</th>
+        <th>Address</th>
+        <th>Items Ordered</th>
+        <th>Total Amount</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for order in orders %}
+      <tr>
+        <td>
+          {% if order.user %}
+            {{ order.user.username }}
+          {% else %}
+            {{ order.full_name }}
+          {% endif %}
+        </td>
+        <td>{{ order.phone }}</td>
+        <td>{{ order.address }}</td>
+        <td>
+          <ul class="list-unstyled mb-0">
+            {% for oi in order.items.all %}
+            <li>{{ oi.item.name }} ({{ oi.quantity }})</li>
+            {% endfor %}
+          </ul>
+        </td>
+        <td>{{ order.total_price }} RWF</td>
+        <td>
+          <span class="badge 
+            {% if order.status == 'pending' %}bg-warning
+            {% elif order.status == 'preparing' %}bg-info
+            {% elif order.status == 'delivered' %}bg-success
+            {% elif order.status == 'cancelled' %}bg-danger
+            {% else %}bg-secondary{% endif %}">
+            {{ order.get_status_display }}
+          </span>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="6" class="text-center text-muted py-4">No orders yet.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 </div>
 
 <style>

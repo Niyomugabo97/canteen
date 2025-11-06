@@ -7,42 +7,60 @@
         <h1 class="text-center mb-4 fw-bold">Checkout</h1>
 
         {% if cart_items %}
-        <div class="table-responsive mb-4">
-            <table class="table table-striped align-middle text-center">
-                <thead class="table-dark">
-                    <tr>
-                        <th scope="col">Item</th>
-                        <th scope="col">Quantity</th>
-                        <th scope="col">Subtotal</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for ci in cart_items %}
-                    <tr>
-                        <td>{{ ci.item.name }}</td>
-                        <td>{{ ci.quantity }}</td>
-                        <td>{{ ci.subtotal }} RWF</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4>Total: <strong>{{ total }} RWF</strong></h4>
-        </div>
-
         <form method="post">
             {% csrf_token %}
+
+            <!-- User Details Form -->
+            <h5 class="mb-3 fw-semibold">Your Details</h5>
             <div class="mb-3">
-                {{ form.as_p }}
+                {% for field in form %}
+                    <div class="mb-2">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {% if field.errors %}
+                            {% for error in field.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                {% endfor %}
             </div>
+
+            <!-- Cart Items -->
+            <h5 class="mb-3 fw-semibold">Cart Items</h5>
+            <div class="table-responsive mb-3">
+                <table class="table table-striped align-middle text-center">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Item</th>
+                            <th>Quantity</th>
+                            <th>Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ci in cart_items %}
+                        <tr>
+                            <td>{{ ci.item.name }}</td>
+                            <td>{{ ci.quantity }}</td>
+                            <td>{{ ci.subtotal }} RWF</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Total -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4>Total: <strong>{{ total }} RWF</strong></h4>
+            </div>
+
             <button type="submit" class="btn btn-gradient w-100 py-2 fw-semibold">Place Order</button>
         </form>
 
         {% else %}
         <p class="text-center fs-5 mt-4">
-            Your cart is empty. <a href="{% url 'orders:menu-list' %}" class="text-decoration-none fw-bold">Go back to menu</a>
+            Your cart is empty. 
+            <a href="{% url 'orders:menu-list' %}" class="text-decoration-none fw-bold">Go back to menu</a>
         </p>
         {% endif %}
     </div>

@@ -33,7 +33,9 @@ urlpatterns = [
 
     # Custom Admin Dashboard Routes
     path('dashboard/', views.dashboard_home, name='dashboard-home'),
+    path('dashboard/orders/', views.order_dashboard, name='order-dashboard'),
     path('dashboard/item/add/', views.add_item, name='add-item'),
     path('dashboard/item/edit/<int:item_id>/', views.edit_item, name='edit-item'),
     path('dashboard/item/delete/<int:item_id>/', views.delete_item, name='delete-item'),
+   
 ]

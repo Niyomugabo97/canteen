@@ -1,13 +1,17 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login, authenticate, logout
-from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import JsonResponse
 from django.db.models import Q
+from django.contrib.auth.models import User
 from .models import Item, Category, Order
-from .forms import ItemForm, LoginForm
+from .forms import ItemForm, LoginForm, OrderForm, CustomUserCreationForm
+from django.contrib.admin.views.decorators import staff_member_required
+
+from .models import Order, Item
+
 
 # ============================
 # MENU & CATEGORY DISPLAY
@@ -39,6 +43,7 @@ def item_detail(request, item_id):
 
 def _get_cart(request):
     return request.session.setdefault('cart', {})
+
 
 @login_required
 def add_to_cart(request, item_id):
@@ -89,22 +94,20 @@ def place_order(request):
         messages.warning(request, "Your cart is empty.")
         return redirect('orders:menu')
 
-    # Minimal order create (extend as needed)
     order = Order.objects.create(user=request.user, full_name=request.user.username, phone='N/A', address='N/A')
 
     total = 0
+    from .models import OrderItem
     for item_id_str, qty in cart.items():
         try:
             product = Item.objects.get(pk=int(item_id_str))
         except Item.DoesNotExist:
             continue
         total += product.price * qty
-        # If OrderItem model exists with related_name "items"
-        from .models import OrderItem
         OrderItem.objects.create(order=order, item=product, quantity=qty, price=product.price)
+
     order.total_price = total
     order.save()
-
     request.session['cart'] = {}
     request.session.modified = True
     messages.success(request, "Order placed successfully!")
@@ -136,37 +139,44 @@ def cancel_order(request, order_id):
 # ============================
 
 def register_user(request):
+    """
+    Handle user signup using email as both username and email.
+    Show a clear message if the email already exists.
+    """
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = CustomUserCreationForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            login(request, user)
-            messages.success(request, "Registration successful!")
-            return redirect('orders:menu')
+            try:
+                user = form.save()
+                login(request, user)
+                messages.success(request, "✅ Account created successfully! Welcome aboard.")
+                return redirect('orders:menu')
+            except Exception as e:
+                messages.error(request, str(e))
+        else:
+            # Show form validation errors (e.g., password mismatch)
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field.capitalize()}: {error}")
     else:
-        form = UserCreationForm()
+        form = CustomUserCreationForm()
+
     return render(request, 'registration/signup.html', {'form': form})
 
 
+
 def login_user(request):
+    """
+    Handle login using email and password.
+    """
     if request.method == 'POST':
         form = LoginForm(request.POST)
         if form.is_valid():
-            email = form.cleaned_data.get('email')
-            password = form.cleaned_data.get('password')
-            # Map email to username for authentication
-            from django.contrib.auth.models import User as DjangoUser
-            try:
-                user_obj = DjangoUser.objects.get(email=email)
-                username = user_obj.username
-            except DjangoUser.DoesNotExist:
-                messages.error(request, "Invalid email or password.")
-                return render(request, 'registration/login.html', {'form': form})
-            user = authenticate(username=username, password=password)
-            if user is not None:
-                login(request, user)
-                messages.success(request, f"Welcome back, {user.username}!")
-                return redirect('orders:menu')
+            user = form.get_user()
+            login(request, user)
+            messages.success(request, f"Welcome back, {user.username}!")
+            return redirect('orders:menu')
+        else:
             messages.error(request, "Invalid email or password.")
     else:
         form = LoginForm()
@@ -174,6 +184,9 @@ def login_user(request):
 
 
 def logout_user(request):
+    """
+    Log the user out and redirect to login page.
+    """
     logout(request)
     messages.info(request, "You have been logged out.")
     return redirect('orders:login')
@@ -199,33 +212,38 @@ def checkout(request):
         cart_items.append({'item': product, 'quantity': qty, 'subtotal': subtotal})
 
     if request.method == 'POST':
-        # Create an order from cart contents, then redirect to success page
-        from .models import OrderItem
-        order = Order.objects.create(
-            user=request.user,
-            full_name=request.user.username,
-            phone='N/A',
-            address='N/A',
-            total_price=total_price,
-        )
-        for row in cart_items:
-            OrderItem.objects.create(
-                order=order,
-                item=row['item'],
-                quantity=row['quantity'],
-                price=row['item'].price,
-            )
-        request.session['cart'] = {}
-        request.session.modified = True
-        messages.success(request, f"Order #{order.id} placed successfully!")
-        return redirect('orders:order-success', order_id=order.id)
+        form = OrderForm(request.POST)
+        if form.is_valid():
+            order = form.save(commit=False)
+            order.user = request.user
+            order.total_price = total_price
+            order.save()
 
-    return render(request, 'orders/checkout.html', {'cart_items': cart_items, 'total_price': total_price})
+            from .models import OrderItem
+            for row in cart_items:
+                OrderItem.objects.create(
+                    order=order,
+                    item=row['item'],
+                    quantity=row['quantity'],
+                    price=row['item'].price,
+                )
+
+            request.session['cart'] = {}
+            request.session.modified = True
+            messages.success(request, f"Order #{order.id} placed successfully!")
+            return redirect('orders:order-success', order_id=order.id)
+    else:
+        form = OrderForm(initial={'full_name': request.user.username})
+
+    return render(request, 'orders/checkout.html', {
+        'cart_items': cart_items,
+        'total_price': total_price,
+        'form': form,
+    })
 
 
 def order_success(request, order_id):
     order = get_object_or_404(Order, pk=order_id)
-    # if authenticated, prevent viewing other users' orders
     if request.user.is_authenticated and order.user and order.user != request.user:
         return redirect('orders:order-list')
     order_items = order.items.select_related('item').all()
@@ -244,7 +262,11 @@ def order_success(request, order_id):
 @staff_member_required
 def dashboard_home(request):
     items = Item.objects.all().order_by('-created_at')
-    return render(request, 'dashboard/dashboard.html', {'items': items})
+    orders = Order.objects.prefetch_related('items__item').order_by('-created_at')
+    return render(request, 'dashboard/dashboard.html', {'items': items, 'orders': orders})
+
+    
+    
 
 
 @staff_member_required
@@ -280,3 +302,8 @@ def delete_item(request, item_id):
     item.delete()
     messages.success(request, 'Item deleted successfully!')
     return redirect('dashboard-home')
+
+@staff_member_required
+def order_dashboard(request):
+    orders = Order.objects.prefetch_related('items__item').order_by('-created_at')
+    return render(request, 'dashboard/order_dashboard.html', {'orders': orders})

@@ -3,11 +3,13 @@
 {% block content %}
 <div class="d-flex justify-content-center align-items-center min-vh-100 bg-light">
   <div class="card shadow-lg p-4" style="max-width: 420px; width: 100%; border-radius: 15px;">
+
     <div class="text-center mb-4">
       <h2 class="fw-bold">Welcome Back</h2>
       <p class="text-muted mb-0">Login to continue your journey</p>
     </div>
 
+    <!-- General messages -->
     {% if messages %}
       {% for message in messages %}
         <div class="alert alert-danger text-center py-2 mb-3">{{ message }}</div>
@@ -16,17 +18,27 @@
 
     <form method="post" action="{% url 'orders:login' %}" class="needs-validation" novalidate>
       {% csrf_token %}
+
+      <!-- Email Field -->
       <div class="form-group mb-3">
         <label for="id_email" class="form-label fw-semibold">Email</label>
         {{ form.email }}
+        {% if form.email.errors %}
+          <div class="text-danger small mt-1">{{ form.email.errors.0 }}</div>
+        {% endif %}
       </div>
+
+      <!-- Password Field -->
       <div class="form-group mb-3">
         <label for="id_password" class="form-label fw-semibold">Password</label>
         {{ form.password }}
+        {% if form.password.errors %}
+          <div class="text-danger small mt-1">{{ form.password.errors.0 }}</div>
+        {% endif %}
       </div>
 
       <button type="submit" class="btn w-100 py-2 fw-semibold text-white"
-              style="background: linear-gradient(90deg, #007bff, #00b4d8); border: none; border-radius: 8px;">
+              style="background: linear-gradient(90deg, #6a11cb, #2575fc); border: none; border-radius: 8px;">
         Login
       </button>
     </form>

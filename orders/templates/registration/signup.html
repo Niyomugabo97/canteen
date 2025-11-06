@@ -3,16 +3,41 @@
 {% block content %}
 <div class="container my-5" style="max-width: 500px;">
     <h1 class="mb-4 text-center">Sign Up</h1>
+
+    <!-- General messages -->
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-danger text-center py-2 mb-3">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
     <form method="post" action="{% url 'orders:signup-view' %}">
         {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit" class="btn btn-gradient w-100 mt-3">Create Account</button>
+
+        <!-- Loop through fields to show field-specific errors -->
+        {% for field in form %}
+            <div class="mb-3">
+                {{ field.label_tag }}
+                {{ field }}
+                {% for error in field.errors %}
+                    <div class="text-danger small mt-1">{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+
+        <button type="submit" class="btn w-100 py-2 fw-semibold text-white"
+                style="background: linear-gradient(90deg, #6a11cb, #2575fc); border: none; border-radius: 8px;">
+            Create Account
+        </button>
     </form>
+
     <p class="mt-3 text-center">
-        Already have an account? <a href="{% url 'orders:login' %}">Login here</a>
+        Already have an account? 
+        <a href="{% url 'orders:login' %}" class="text-decoration-none fw-semibold text-primary">Login here</a>
     </p>
+
     <p class="text-center">
-        <a href="{% url 'orders:menu-list' %}">Back to Menu</a>
+        <a href="{% url 'orders:menu-list' %}" class="text-decoration-none">Back to Menu</a>
     </p>
 </div>
 {% endblock %}
