@@ -1,0 +1,78 @@
+{% extends "orders/base.html" %}
+
+{% block content %}
+<div class="container my-4">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Manage Orders</h2>
+   <a href="{% url 'orders:dashboard-home' %}" class="btn btn-secondary btn-sm">Back to Dashboard</a>
+
+
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-striped text-center align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>User</th>
+          <th>Phone</th>
+          <th>Address</th>
+          <th>Items Ordered</th>
+          <th>Total Amount</th>
+          <th>Status</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+        <tr>
+          <td data-label="User">
+            {% if order.user %}{{ order.user.username }}{% else %}{{ order.full_name }}{% endif %}
+          </td>
+          <td data-label="Phone">{{ order.phone }}</td>
+          <td data-label="Address">{{ order.address }}</td>
+          <td data-label="Items Ordered">
+            <ul class="list-unstyled mb-0">
+              {% for oi in order.items.all %}
+                <li>{{ oi.item.name }} ({{ oi.quantity }})</li>
+              {% endfor %}
+            </ul>
+          </td>
+          <td data-label="Total Amount">{{ order.total_price }} RWF</td>
+          <td data-label="Status">
+            <span class="badge 
+              {% if order.status == 'pending' %}bg-warning
+              {% elif order.status == 'preparing' %}bg-info
+              {% elif order.status == 'delivered' %}bg-success
+              {% elif order.status == 'cancelled' %}bg-danger
+              {% else %}bg-secondary{% endif %}">
+              {{ order.get_status_display }}
+            </span>
+          </td>
+          <td data-label="Actions" class="text-end">
+            <a href="{% url 'orders:update-order' order.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
+            <a href="{% url 'orders:delete-order' order.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete order?');">Delete</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-4">No orders yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- Responsive Table CSS -->
+<style>
+@media (max-width: 768px) {
+  .table thead { display: none; }
+  .table tr { display: block; margin-bottom: 1rem; border: 1px solid #eee; border-radius: 8px; padding: .5rem; }
+  .table td { display: flex; justify-content: space-between; align-items: center; padding: .25rem .5rem; }
+  .table td::before { content: attr(data-label); font-weight: 600; margin-right: 0.5rem; }
+  .table td img { width: 50px; height: 50px; object-fit: cover; }
+}
+</style>
+{% endblock %}

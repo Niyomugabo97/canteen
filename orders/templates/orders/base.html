@@ -46,19 +46,12 @@
         .btn-gradient:hover {
             opacity: 0.9;
         }
-
-        /* Page container padding */
-        .container-content {
-            min-height: 80vh; /* so footer stays at bottom */
-            padding-top: 20px;
-            padding-bottom: 20px;
-        }
     </style>
 </head>
-<body>
+<body class="d-flex flex-column min-vh-100">
 
     <!-- NAVBAR -->
-    <nav class="navbar navbar-expand-lg navbar-custom">
+    <nav class="navbar navbar-expand-lg navbar-custom position-relative">
         <div class="container">
             <a class="navbar-brand fw-bold" href="{% url 'orders:menu-list' %}">EDEN CANTEEN</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -70,9 +63,18 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'orders:menu-list' %}">Menu</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'orders:cart' %}">Cart</a>
+
+                    <li class="nav-item position-relative">
+                        <a class="nav-link" href="{% url 'orders:cart' %}">
+                            Cart
+                            {% if cart_quantity > 0 %}
+                                <span class="badge bg-danger rounded-circle position-absolute top-0 start-100 translate-middle">
+                                    {{ cart_quantity }}
+                                </span>
+                            {% endif %}
+                        </a>
                     </li>
+
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'orders:checkout' %}">Checkout</a>
                     </li>
@@ -106,14 +108,42 @@
         </div>
     </nav>
 
+    <!-- JS for AJAX Cart Badge Update -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const addToCartBtns = document.querySelectorAll('.add-to-cart-btn');
+
+        addToCartBtns.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const url = btn.getAttribute('href');
+
+                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.cart_quantity !== undefined) {
+                        let badge = document.querySelector('.nav-item.position-relative .badge');
+                        if (!badge) {
+                            badge = document.createElement('span');
+                            badge.classList.add('badge', 'bg-danger', 'rounded-circle', 'position-absolute', 'top-0', 'start-100', 'translate-middle');
+                            document.querySelector('.nav-item.position-relative a').appendChild(badge);
+                        }
+                        badge.textContent = data.cart_quantity;
+                    }
+                });
+            });
+        });
+    });
+    </script>
+
     <!-- PAGE CONTENT -->
-    <div class="container container-content">
+    <main class="flex-grow-1 container py-4">
         {% block content %}
         {% endblock %}
-    </div>
+    </main>
 
     <!-- FOOTER -->
-    <footer class="text-center">
+    <footer class="text-center mt-auto">
         <div class="container">
             <p>&copy; 2025 Eden Canteen App. All rights reserved.</p>
         </div>

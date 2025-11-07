@@ -2,13 +2,25 @@
 
 {% block content %}
 <div class="container my-4">
-  <!-- Items Section -->
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Admin Dashboard</h2>
-    <a href="{% url 'add-item' %}" class="btn btn-primary">+ Add Item</a>
-    
+
+  <!-- Header & Action Buttons -->
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
+    <h2 class="mb-2 mb-md-0">Admin Dashboard</h2>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{% url 'add-item' %}" class="btn btn-primary">+ Add Item</a>
+      <a href="{% url 'orders:manage-users' %}" class="btn btn-primary">Manage Admins</a>
+      <!-- Only show Make Superuser if you pass a user context -->
+      {% if user.is_superuser %}
+      <a href="{% url 'orders:make-superuser' user.id %}" class="btn btn-primary">Make Superuser</a>
+       {% endif %}
+
+      <a href="{% url 'orders:manage-orders' %}" class="btn btn-primary">See Orders</a>
+
+
+    </div>
   </div>
 
+  <!-- Items Table -->
   <div class="table-responsive mb-5">
     <table class="table table-striped align-middle">
       <thead class="table-dark">
@@ -24,24 +36,24 @@
       <tbody>
         {% for item in items %}
         <tr>
-          <td class="fw-semibold">{{ item.name }}</td>
-          <td>{{ item.category.name|default:"-" }}</td>
-          <td>{{ item.price }} RWF</td>
-          <td>
+          <td data-label="Item" class="fw-semibold">{{ item.name }}</td>
+          <td data-label="Category">{{ item.category.name|default:"-" }}</td>
+          <td data-label="Price">{{ item.price }} RWF</td>
+          <td data-label="Available">
             {% if item.available %}
               <span class="badge bg-success">Yes</span>
             {% else %}
               <span class="badge bg-secondary">No</span>
             {% endif %}
           </td>
-          <td>
+          <td data-label="Image">
             {% if item.image %}
-              <img src="{{ item.image.url }}" alt="{{ item.name }}" style="width:60px; height:60px; object-fit:cover; border-radius:6px;">
+              <img src="{{ item.image.url }}" alt="{{ item.name }}" class="rounded" style="width:60px; height:60px; object-fit:cover;">
             {% else %}
               <span class="text-muted">No image</span>
             {% endif %}
           </td>
-          <td class="text-end">
+          <td data-label="Actions" class="text-end">
             <a href="{% url 'edit-item' item.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
             <a href="{% url 'delete-item' item.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete {{ item.name }}?');">Delete</a>
           </td>
@@ -55,68 +67,29 @@
     </table>
   </div>
 
-  <!-- Orders Section -->
- <!-- Orders Section -->
-<h3 class="mb-3">All User Orders</h3>
-<div class="table-responsive">
-  <table class="table table-striped text-center align-middle">
-    <thead class="table-dark">
-      <tr>
-        <th>User</th>
-        <th>Phone</th>
-        <th>Address</th>
-        <th>Items Ordered</th>
-        <th>Total Amount</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for order in orders %}
-      <tr>
-        <td>
-          {% if order.user %}
-            {{ order.user.username }}
-          {% else %}
-            {{ order.full_name }}
-          {% endif %}
-        </td>
-        <td>{{ order.phone }}</td>
-        <td>{{ order.address }}</td>
-        <td>
-          <ul class="list-unstyled mb-0">
-            {% for oi in order.items.all %}
-            <li>{{ oi.item.name }} ({{ oi.quantity }})</li>
-            {% endfor %}
-          </ul>
-        </td>
-        <td>{{ order.total_price }} RWF</td>
-        <td>
-          <span class="badge 
-            {% if order.status == 'pending' %}bg-warning
-            {% elif order.status == 'preparing' %}bg-info
-            {% elif order.status == 'delivered' %}bg-success
-            {% elif order.status == 'cancelled' %}bg-danger
-            {% else %}bg-secondary{% endif %}">
-            {{ order.get_status_display }}
-          </span>
-        </td>
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="6" class="text-center text-muted py-4">No orders yet.</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-</div>
+ 
 
+<!-- Responsive Table CSS -->
 <style>
-@media (max-width: 576px) {
+@media (max-width: 768px) {
   .table thead { display: none; }
   .table tr { display: block; margin-bottom: 1rem; border: 1px solid #eee; border-radius: 8px; padding: .5rem; }
-  .table td { display: flex; justify-content: space-between; }
-  .table td::before { content: attr(data-label); font-weight: 600; margin-right: 1rem; }
+  .table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .25rem .5rem;
+  }
+  .table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    margin-right: 0.5rem;
+  }
+  .table td img {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+  }
 }
 </style>
 {% endblock %}

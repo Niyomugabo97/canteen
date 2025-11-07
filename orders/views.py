@@ -9,8 +9,13 @@ from django.contrib.auth.models import User
 from .models import Item, Category, Order
 from .forms import ItemForm, LoginForm, OrderForm, CustomUserCreationForm
 from django.contrib.admin.views.decorators import staff_member_required
-
 from .models import Order, Item
+from django.contrib.auth.decorators import user_passes_test
+from .models import Order
+
+
+
+
 
 
 # ============================
@@ -42,22 +47,31 @@ def item_detail(request, item_id):
 # ============================
 
 def _get_cart(request):
+    """Return the cart dictionary from session, or create if missing."""
     return request.session.setdefault('cart', {})
 
 
 @login_required
 def add_to_cart(request, item_id):
+    """Add item to cart. Supports AJAX for live cart count."""
     item = get_object_or_404(Item, id=item_id)
     cart = _get_cart(request)
     key = str(item_id)
     cart[key] = cart.get(key, 0) + 1
     request.session.modified = True
     messages.success(request, f"{item.name} added to your cart.")
+
+    # Return JSON if AJAX request
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        total_quantity = sum(cart.values())
+        return JsonResponse({'cart_quantity': total_quantity})
+
     return redirect('orders:menu')
 
 
 @login_required
 def view_cart(request):
+    """View cart page."""
     cart = _get_cart(request)
     cart_items = []
     total_price = 0
@@ -74,6 +88,7 @@ def view_cart(request):
 
 @login_required
 def remove_from_cart(request, item_id):
+    """Remove an item from cart."""
     cart = _get_cart(request)
     key = str(item_id)
     if key in cart:
@@ -81,6 +96,14 @@ def remove_from_cart(request, item_id):
         request.session.modified = True
         messages.success(request, "Item removed from your cart.")
     return redirect('orders:view-cart')
+
+
+def cart_count(request):
+    """Context processor to provide cart quantity to all templates."""
+    cart = request.session.get('cart', {})
+    total_quantity = sum(cart.values())
+    return {'cart_quantity': total_quantity}
+
 
 
 # ============================
@@ -132,6 +155,13 @@ def cancel_order(request, order_id):
     else:
         messages.error(request, "This order cannot be cancelled.")
     return redirect('orders:order-list')
+
+
+
+def manage_orders(request):
+    orders = Order.objects.all().order_by('-id')
+    return render(request, 'orders/manage_orders.html', {'orders': orders})
+
 
 
 # ============================
@@ -307,3 +337,63 @@ def delete_item(request, item_id):
 def order_dashboard(request):
     orders = Order.objects.prefetch_related('items__item').order_by('-created_at')
     return render(request, 'dashboard/order_dashboard.html', {'orders': orders})
+
+# ==========================
+# Admin: Update / Delete Order
+# ==========================
+
+@staff_member_required
+def update_order(request, order_id):
+    order = get_object_or_404(Order, pk=order_id)
+    if request.method == 'POST':
+        status = request.POST.get('status')
+        if status in dict(Order.STATUS_CHOICES).keys():
+            order.status = status
+            order.save()
+            messages.success(request, f"Order #{order.id} updated successfully.")
+        return redirect('orders:manage-orders')
+    return render(request, 'orders/update_order.html', {'order': order})
+
+
+@staff_member_required
+def delete_order(request, order_id):
+    order = get_object_or_404(Order, pk=order_id)
+    order.delete()
+    messages.success(request, f"Order #{order.id} deleted successfully.")
+    return redirect('orders:manage-orders')
+
+
+# ========================
+# Manage Admins
+# ========================
+@user_passes_test(lambda u: u.is_superuser)
+def manage_users(request):
+    """Display all users and allow promotion to admin."""
+    users = User.objects.exclude(is_superuser=True)  # hide the superuser
+    return render(request, 'dashboard/manage_users.html', {'users': users})
+
+
+@user_passes_test(lambda u: u.is_superuser)
+def make_admin(request, user_id):
+    """Promote a user to admin."""
+    user = User.objects.get(id=user_id)
+    user.is_staff = True
+    user.save()
+    return redirect('orders:manage-users')
+
+def make_superuser(request, user_id):
+    if request.user.is_superuser:
+        user = User.objects.get(pk=user_id)
+        user.is_staff = True
+        user.is_superuser = True
+        user.save()
+        messages.success(request, f"{user.username} is now a superuser!")
+    else:
+        messages.error(request, "You do not have permission to do that.")
+    return redirect('dashboard-home')
+
+def cart_count(request):
+    
+    cart =request.session.get('cart', {})
+    total_quantity = sum(cart.values())
+    return {'cart_quantity': total_quantity}

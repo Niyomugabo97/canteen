@@ -29,7 +29,8 @@
                                 <form action="{% url 'orders:cart-add' item.pk %}" method="post" class="d-flex align-items-center gap-2">
                                     {% csrf_token %}
                                     <input type="number" name="quantity" value="1" min="1" class="form-control form-control-sm" style="width: 70px;">
-                                    <button type="submit" class="btn btn-gradient btn-sm">Add to Cart</button>
+                                    <a href="{% url 'orders:cart-add' item.id %}" class="btn btn-primary add-to-cart-btn">Add to Cart</a>
+
                                 </form>
                             </div>
                         </div>
