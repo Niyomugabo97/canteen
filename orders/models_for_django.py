@@ -1,7 +1,5 @@
 from django.db import models
 from django.contrib.auth.models import User
-from .firebase_helper import send_to_firebase
-
 
 # ========================
 # CATEGORY MODEL
@@ -13,7 +11,7 @@ class Category(models.Model):
         verbose_name_plural = "categories"
         ordering = ['name']
 
-    def _str_(self):
+    def __str__(self):
         return self.name
 
 
@@ -32,34 +30,16 @@ class Item(models.Model):
     class Meta:
         ordering = ['-created_at']
 
-    def _str_(self):
+    def __str__(self):
         return self.name
 
     @property
     def image_url(self):
+        """Return full image URL or placeholder if not available."""
         try:
             return self.image.url
         except:
             return '/static/img/placeholder.png'
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-
-        # Prepare data for Firebase
-        data = {
-            "id": self.id,
-            "name": self.name,
-            "description": self.description,
-            "price": float(self.price),
-            "category": self.category.name if self.category else None,
-            "available": self.available,
-            "image_url": self.image.url if self.image else None,
-            "created_at": str(self.created_at),
-        }
-
-        # Send to Firebase
-        send_to_firebase("items", data)
-
 
 
 # ========================
@@ -84,32 +64,15 @@ class Order(models.Model):
     class Meta:
         ordering = ['-created_at']
 
-    def _str_(self):
+    def __str__(self):
         return f"Order #{self.id} - {self.full_name}"
 
     def calculate_total(self):
+        """Recalculate total price from related OrderItems."""
         total = sum(item.get_subtotal() for item in self.items.all())
         self.total_price = total
         self.save()
         return total
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-
-        # Prepare data for Firebase
-        data = {
-            "order_id": self.id,
-            "user": self.user.username if self.user else None,
-            "full_name": self.full_name,
-            "phone": self.phone,
-            "address": self.address,
-            "status": self.status,
-            "total_price": float(self.total_price),
-            "created_at": str(self.created_at),
-        }
-
-        send_to_firebase("orders", data)
-
 
 
 # ========================
@@ -122,25 +85,11 @@ class OrderItem(models.Model):
     price = models.DecimalField(max_digits=8, decimal_places=2)
 
     def get_subtotal(self):
+        """Return the total price for this order item."""
         return self.quantity * self.price
 
-    def _str_(self):
+    def __str__(self):
         return f"{self.quantity} x {self.item.name}"
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-
-        # Prepare data for Firebase
-        data = {
-            "order_id": self.order.id,
-            "item": self.item.name if self.item else None,
-            "quantity": self.quantity,
-            "price": float(self.price),
-            "subtotal": float(self.get_subtotal()),
-        }
-
-        send_to_firebase("order_items", data)
-
 
 
 # ========================
@@ -161,21 +110,5 @@ class Payment(models.Model):
         verbose_name_plural = "payments"
         ordering = ['-created_at']
 
-    def _str_(self):
+    def __str__(self):
         return f"Payment for Order #{self.order.id}"
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-
-        # Prepare data for Firebase
-        data = {
-            "order_id": self.order.id,
-            "method": self.method,
-            "amount": float(self.amount),
-            "currency": self.currency,
-            "status": self.status,
-            "payment_id": self.provider_payment_id,
-            "created_at": str(self.created_at),
-        }
-
-        send_to_firebase("payments", data)

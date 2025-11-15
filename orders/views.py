@@ -11,7 +11,7 @@ from .forms import ItemForm, LoginForm, OrderForm, CustomUserCreationForm
 from django.contrib.admin.views.decorators import staff_member_required
 from .models import Order, Item
 from django.contrib.auth.decorators import user_passes_test
-from .models import Order
+
 
 
 

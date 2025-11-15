@@ -1,0 +1,25 @@
+{% extends "orders/base.html" %}
+
+{% block content %}
+<div class="container my-4">
+    <h2 class="mb-3">Update Order #{{ order.id }}</h2>
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <div class="mb-3">
+            <label class="form-label">Order Status</label>
+            <select name="status" class="form-select">
+                {% for key, value in order.STATUS_CHOICES %}
+                    <option value="{{ key }}" {% if order.status == key %}selected{% endif %}>
+                        {{ value }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button class="btn btn-primary" type="submit">Update</button>
+        <a href="{% url 'orders:manage-orders' %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}
